@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { VehicleProfile, VehicleStatus } from '../types';
 import { 
@@ -20,7 +19,7 @@ const FleetManager: React.FC<Props> = ({ vehicles, onAddVehicle, onEditVehicle, 
   const [formData, setFormData] = useState({
     name: '',
     plateNumber: '',
-    type: 'SEDAN' as any,
+    type: '',
     acquisitionDate: new Date().toISOString().split('T')[0],
     status: 'USABLE' as VehicleStatus,
     fuelType: 'Gasoline 95',
@@ -33,7 +32,7 @@ const FleetManager: React.FC<Props> = ({ vehicles, onAddVehicle, onEditVehicle, 
     setFormData({
       name: '',
       plateNumber: '',
-      type: 'SEDAN',
+      type: '',
       acquisitionDate: new Date().toISOString().split('T')[0],
       status: 'USABLE',
       fuelType: 'Gasoline 95',
@@ -260,16 +259,13 @@ const FleetManager: React.FC<Props> = ({ vehicles, onAddVehicle, onEditVehicle, 
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">ประเภทยานพาหนะ</label>
-                  <select 
+                  <input 
+                    type="text" required
                     value={formData.type}
-                    onChange={(e) => setFormData({...formData, type: e.target.value as any})}
+                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                    placeholder="เช่น รถเก๋ง, รถตู้, รถบรรทุก"
                     className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-800 shadow-inner"
-                  >
-                    <option value="SEDAN">รถเก๋ง (Sedan)</option>
-                    <option value="VAN">รถตู้ (Van)</option>
-                    <option value="TRUCK">รถบรรทุก (Truck)</option>
-                    <option value="MOTORCYCLE">รถจักรยานยนต์</option>
-                  </select>
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">วันที่ได้มา</label>

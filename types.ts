@@ -1,4 +1,3 @@
-
 export enum UserRole {
   ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
@@ -12,7 +11,7 @@ export interface VehicleProfile {
   id: string;
   name: string;
   plateNumber: string;
-  type: 'SEDAN' | 'VAN' | 'TRUCK' | 'MOTORCYCLE';
+  type: string;
   fuelType: string;
   consumptionRate: number; // km/L
   wearAndTearRate: number; // Baht/km
@@ -44,6 +43,7 @@ export interface Trip {
   distanceKm: number;
   durationMin: number;
   participants: string[];
+  driverName?: string;
   vehicleId: string;
   fuelCost: number;
   allowance: number;

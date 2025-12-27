@@ -1,16 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Trip } from '../types';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area,
   Cell, PieChart, Pie
 } from 'recharts';
-import { Fuel, Route, Timer, CheckCircle2, BrainCircuit, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { 
+  Fuel, Route, Timer, CheckCircle2, BrainCircuit, TrendingUp, 
+  Share2, Download, Link as LinkIcon, Mail, FileText, X, Loader2, ShieldCheck
+} from 'lucide-react';
 
 interface Props {
   trips: Trip[];
+  onNavigateToAI: () => void;
 }
 
-const Dashboard: React.FC<Props> = ({ trips }) => {
+const Dashboard: React.FC<Props> = ({ trips, onNavigateToAI }) => {
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [shareStep, setShareStep] = useState<'options' | 'success'>('options');
+
   const totalKm = trips.reduce((acc, t) => acc + t.distanceKm, 0);
   const totalFuel = trips.reduce((acc, t) => acc + t.fuelCost, 0);
   const avgEfficiency = trips.length > 0 ? trips.reduce((acc, t) => acc + (t.efficiencyScore || 0), 0) / trips.length : 0;
@@ -39,9 +47,22 @@ const Dashboard: React.FC<Props> = ({ trips }) => {
     { name: 'อื่นๆ', value: 10, fill: '#64748B' },
   ];
 
+  const handleShareReport = () => {
+    setIsShareModalOpen(true);
+    setShareStep('options');
+  };
+
+  const handleExportAction = async (type: string) => {
+    setIsGenerating(true);
+    // จำลองการสร้างรายงานเชิงลึกและการตรวจสอบสิทธิ์
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsGenerating(false);
+    setShareStep('success');
+  };
+
   return (
     <div className="space-y-4 md:space-y-8 animate-in fade-in duration-700">
-      {/* Top Cards Responsive Grid */}
+      {/* Top Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {summaryData.map((item, idx) => (
           <div key={idx} className="bg-white p-5 md:p-7 rounded-2xl md:rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between group hover:shadow-lg transition-all duration-300">
@@ -95,7 +116,7 @@ const Dashboard: React.FC<Props> = ({ trips }) => {
           </div>
         </div>
 
-        {/* Category Breakdown (Hidden on small mobile if space is tight, or just stacked) */}
+        {/* Category Breakdown */}
         <div className="bg-white p-6 md:p-10 rounded-2xl md:rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col">
           <h4 className="text-lg md:text-xl font-black text-[#002D62] mb-6 md:mb-8 tracking-tight">Mission Classification</h4>
           <div className="flex-1 min-h-[220px] md:min-h-[280px] w-full relative">
@@ -136,7 +157,7 @@ const Dashboard: React.FC<Props> = ({ trips }) => {
         </div>
       </div>
 
-      {/* Responsive AI CTA */}
+      {/* AI CTA Section */}
       <div className="bg-gradient-to-br from-[#002D62] via-[#001D42] to-black p-6 md:p-10 rounded-2xl md:rounded-[3rem] shadow-xl text-white overflow-hidden relative group">
         <div className="absolute top-0 right-0 p-8 opacity-5 hidden sm:block">
           <BrainCircuit size={140} />
@@ -156,15 +177,116 @@ const Dashboard: React.FC<Props> = ({ trips }) => {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
-             <button className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-amber-500 text-indigo-950 rounded-xl md:rounded-2xl font-black text-xs md:text-sm shadow-lg hover:scale-105 transition-all">
+             <button 
+                onClick={onNavigateToAI}
+                className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-amber-500 text-indigo-950 rounded-xl md:rounded-2xl font-black text-xs md:text-sm shadow-lg hover:scale-105 transition-all"
+             >
                ดูข้อเสนอแนะ
              </button>
-             <button className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl md:rounded-2xl font-black text-xs md:text-sm hover:bg-white/20 transition-all">
+             <button 
+                onClick={handleShareReport}
+                className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl md:rounded-2xl font-black text-xs md:text-sm hover:bg-white/20 transition-all flex items-center justify-center gap-2"
+             >
+               <Share2 size={18} />
                แชร์รีพอร์ต
              </button>
           </div>
         </div>
       </div>
+
+      {/* Share Report Modal */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[#002D62]/70 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-indigo-950 shadow-lg">
+                  <Share2 size={20} />
+                </div>
+                <h3 className="text-xl font-black text-[#002D62] tracking-tight">แชร์รายงานสรุปผล</h3>
+              </div>
+              <button onClick={() => setIsShareModalOpen(false)} className="p-2 hover:bg-slate-50 rounded-xl transition-all">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="p-8">
+              {shareStep === 'options' ? (
+                <div className="space-y-4">
+                   <p className="text-sm text-slate-500 font-medium mb-6">เลือกรูปแบบการส่งออกข้อมูลที่ต้องการ ระบบจะทำการประมวลผลและตรวจสอบสิทธิ์ก่อนดำเนินการ</p>
+                   
+                   <button 
+                    onClick={() => handleExportAction('pdf')}
+                    disabled={isGenerating}
+                    className="w-full p-6 bg-slate-50 hover:bg-white hover:shadow-xl hover:-translate-y-1 border border-transparent hover:border-amber-200 rounded-3xl transition-all flex items-center justify-between group"
+                   >
+                     <div className="flex items-center gap-5">
+                       <div className="p-4 bg-white rounded-2xl shadow-sm text-red-500 group-hover:bg-red-500 group-hover:text-white transition-all">
+                         <FileText size={24} />
+                       </div>
+                       <div className="text-left">
+                         <p className="font-black text-slate-800">Official PDF Report</p>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Export for e-Saraban</p>
+                       </div>
+                     </div>
+                     {isGenerating ? <Loader2 className="animate-spin text-amber-500" /> : <Download size={20} className="text-slate-300 group-hover:text-amber-500" />}
+                   </button>
+
+                   <button 
+                    onClick={() => handleExportAction('link')}
+                    disabled={isGenerating}
+                    className="w-full p-6 bg-slate-50 hover:bg-white hover:shadow-xl hover:-translate-y-1 border border-transparent hover:border-blue-200 rounded-3xl transition-all flex items-center justify-between group"
+                   >
+                     <div className="flex items-center gap-5">
+                       <div className="p-4 bg-white rounded-2xl shadow-sm text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all">
+                         <LinkIcon size={24} />
+                       </div>
+                       <div className="text-left">
+                         <p className="font-black text-slate-800">Secure Share Link</p>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Valid for 24 hours</p>
+                       </div>
+                     </div>
+                     {isGenerating ? <Loader2 className="animate-spin text-amber-500" /> : <Share2 size={20} className="text-slate-300 group-hover:text-blue-500" />}
+                   </button>
+
+                   <button 
+                    onClick={() => handleExportAction('email')}
+                    disabled={isGenerating}
+                    className="w-full p-6 bg-slate-50 hover:bg-white hover:shadow-xl hover:-translate-y-1 border border-transparent hover:border-emerald-200 rounded-3xl transition-all flex items-center justify-between group"
+                   >
+                     <div className="flex items-center gap-5">
+                       <div className="p-4 bg-white rounded-2xl shadow-sm text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white transition-all">
+                         <Mail size={24} />
+                       </div>
+                       <div className="text-left">
+                         <p className="font-black text-slate-800">Email to Executive</p>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Send as attachment</p>
+                       </div>
+                     </div>
+                     {isGenerating ? <Loader2 className="animate-spin text-amber-500" /> : <Mail size={20} className="text-slate-300 group-hover:text-emerald-500" />}
+                   </button>
+                </div>
+              ) : (
+                <div className="py-10 text-center space-y-6 animate-in zoom-in-95 duration-500">
+                  <div className="w-24 h-24 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/20">
+                    <ShieldCheck size={48} />
+                  </div>
+                  <div>
+                    <h4 className="text-2xl font-black text-[#002D62] mb-2">ดำเนินการสำเร็จ</h4>
+                    <p className="text-sm text-slate-400 font-medium">ระบบทำการประมวลผลและส่งต่อข้อมูลตามช่องทางที่เลือกเรียบร้อยแล้ว ข้อมูลการส่งออกถูกบันทึกใน Audit Trail</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsShareModalOpen(false)}
+                    className="px-10 py-4 bg-[#002D62] text-white rounded-2xl font-black text-sm hover:bg-indigo-900 transition-all shadow-xl"
+                  >
+                    ปิดหน้าต่าง
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

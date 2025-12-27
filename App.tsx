@@ -51,7 +51,7 @@ const App: React.FC = () => {
 
   const menuItems = [
     { id: 'dashboard', label: lang === 'TH' ? 'ภาพรวม' : 'Overview', icon: LayoutDashboard },
-    { id: 'trips', label: lang === 'TH' ? 'รายการทริป' : 'Trips', icon: FileText },
+    { id: 'trips', label: lang === 'TH' ? 'รายการเดินทาง' : 'Trips', icon: FileText },
     { id: 'templates', label: lang === 'TH' ? 'เทมเพลตภารกิจ' : 'Templates', icon: Copy },
     { id: 'map', label: 'Map Replay', icon: MapIcon },
     { id: 'ai', label: 'AI Analytics', icon: BrainCircuit },
@@ -87,7 +87,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard trips={trips} />;
+      case 'dashboard': return <Dashboard trips={trips} onNavigateToAI={() => setActiveTab('ai')} />;
       case 'trips': return (
         <TripTable 
           trips={trips} 
@@ -137,7 +137,7 @@ const App: React.FC = () => {
         };
         handleAddTrip([demoTrip]);
       }} />;
-      default: return <Dashboard trips={trips} />;
+      default: return <Dashboard trips={trips} onNavigateToAI={() => setActiveTab('ai')} />;
     }
   };
 

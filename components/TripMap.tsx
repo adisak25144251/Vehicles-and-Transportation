@@ -4,7 +4,8 @@ import {
   MapPin, Navigation, Play, Pause, RotateCcw, 
   Activity, AlertCircle, Maximize2, Minimize2,
   Eye, Locate, Compass, Gauge, FastForward,
-  ArrowUp, ArrowDown, Zap, ChevronUp, ChevronDown
+  ArrowUp, ArrowDown, Zap, ChevronUp, ChevronDown,
+  Clock
 } from 'lucide-react';
 import L from 'leaflet';
 
@@ -34,6 +35,16 @@ const TripMap: React.FC<Props> = ({ trips }) => {
     passedPath?: L.Polyline,
     vehicle?: L.Marker 
   }>({});
+
+  // Speed levels: 1.0 (Normal) and 5 slower levels
+  const speedLevels = [
+    { label: 'ปกติ (1.0x)', value: 1 },
+    { label: '0.8x', value: 0.8 },
+    { label: '0.6x', value: 0.6 },
+    { label: '0.4x', value: 0.4 },
+    { label: '0.2x', value: 0.2 },
+    { label: '0.1x (ช้ามาก)', value: 0.1 },
+  ];
 
   useEffect(() => {
     if (mapContainerRef.current && !mapRef.current) {
@@ -171,40 +182,52 @@ const TripMap: React.FC<Props> = ({ trips }) => {
         
         {/* HUD Overlay - Stackable for Mobile */}
         <div className="absolute top-4 left-4 z-[10] flex flex-col gap-3 pointer-events-none max-w-[calc(100%-2rem)]">
-          <div className="bg-[#002D62]/95 backdrop-blur-lg p-4 md:p-6 rounded-2xl shadow-xl border border-white/10 min-w-[200px] md:min-w-[300px] pointer-events-auto">
+          <div className="bg-[#002D62]/95 backdrop-blur-lg p-4 md:p-6 rounded-2xl shadow-xl border border-white/10 min-w-[200px] md:min-w-[320px] pointer-events-auto">
              <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-500 rounded-xl flex items-center justify-center text-white shrink-0"><Compass size={24} /></div>
                 <div className="flex-1 truncate">
                   <h4 className="font-black text-white text-sm md:text-lg truncate leading-tight">{selectedTrip?.missionName}</h4>
-                  <p className="text-[8px] md:text-[9px] text-white/50 font-black uppercase tracking-widest">{isPlaying ? 'Simulating Path' : 'Standby'}</p>
+                  <p className="text-[8px] md:text-[9px] text-white/50 font-black uppercase tracking-widest">{isPlaying ? 'กำลังจำลองเส้นทาง' : 'โหมดพร้อมทำงาน'}</p>
                 </div>
              </div>
-             <div className="flex gap-4 mb-4">
-                <div className="flex-1 bg-white/5 p-3 rounded-xl">
-                   <p className="text-[7px] font-black text-white/30 uppercase tracking-widest">Velocity</p>
-                   <p className="text-xl font-black text-white">{currentSpeed} <span className="text-[8px] opacity-30">KM/H</span></p>
+             
+             <div className="flex gap-3 mb-4">
+                <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5">
+                   <p className="text-[7px] font-black text-white/30 uppercase tracking-widest">ความเร็ว</p>
+                   <p className="text-xl font-black text-white">{currentSpeed} <span className="text-[8px] opacity-30">กม./ชม.</span></p>
                 </div>
-                <div className="flex-1 bg-white/5 p-3 rounded-xl">
-                   <p className="text-[7px] font-black text-white/30 uppercase tracking-widest">Mode</p>
-                   <p className="text-xl font-black text-white">SYNC</p>
+                <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5">
+                   <p className="text-[7px] font-black text-white/30 uppercase tracking-widest">ความเร็วการจำลอง</p>
+                   <select 
+                      value={speedMultiplier} 
+                      onChange={(e) => setSpeedMultiplier(parseFloat(e.target.value))}
+                      className="bg-transparent text-white font-black text-sm outline-none w-full"
+                   >
+                     {speedLevels.map(lvl => (
+                       <option key={lvl.value} value={lvl.value} className="text-slate-800">{lvl.label}</option>
+                     ))}
+                   </select>
                 </div>
              </div>
+
              <div className="flex gap-2">
-                <button onClick={() => setIsPlaying(!isPlaying)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg active:scale-95 ${isPlaying ? 'bg-red-500 text-white' : 'bg-amber-500 text-indigo-950'}`}>
-                   {isPlaying ? 'Pause' : 'Start'}
+                <button onClick={() => setIsPlaying(!isPlaying)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all ${isPlaying ? 'bg-red-500 text-white' : 'bg-amber-500 text-indigo-950'}`}>
+                   {isPlaying ? 'หยุดชั่วคราว' : 'เริ่มจำลอง'}
                 </button>
-                <button onClick={() => {setProgress(0); setIsPlaying(false); setCurrentSpeed(0);}} className="p-3 bg-white/10 text-white rounded-xl"><RotateCcw size={16} /></button>
+                <button onClick={() => {setProgress(0); setIsPlaying(false); setCurrentSpeed(0);}} className="p-3 bg-white/10 text-white hover:bg-white/20 rounded-xl transition-all" title="รีเซ็ต">
+                  <RotateCcw size={16} />
+                </button>
              </div>
           </div>
         </div>
 
         {/* Catalog Drawer for Mobile */}
         <button onClick={() => setIsCatalogOpen(!isCatalogOpen)} className="absolute bottom-4 left-4 z-[20] lg:hidden bg-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 font-bold text-xs text-[#002D62]">
-          {isCatalogOpen ? <ChevronDown size={16}/> : <ChevronUp size={16}/>} List Trips
+          {isCatalogOpen ? <ChevronDown size={16}/> : <ChevronUp size={16}/>} เลือกรายการทริป
         </button>
 
         <div className={`absolute bottom-0 left-0 right-0 z-[25] lg:hidden bg-white rounded-t-3xl shadow-2xl transition-transform duration-500 ${isCatalogOpen ? 'translate-y-0' : 'translate-y-full'} max-h-[50vh] overflow-y-auto p-6`}>
-           <h5 className="font-black text-slate-800 mb-4">Select Trip</h5>
+           <h5 className="font-black text-slate-800 mb-4">เลือกการเดินทาง</h5>
            <div className="space-y-3">
               {trips.map(t => (
                 <div key={t.id} onClick={() => {setSelectedTrip(t); setIsCatalogOpen(false); setProgress(0);}} className={`p-4 rounded-xl border-2 transition-all ${selectedTrip?.id === t.id ? 'border-amber-500 bg-amber-50' : 'border-slate-50'}`}>
@@ -216,21 +239,25 @@ const TripMap: React.FC<Props> = ({ trips }) => {
 
         {/* Desktop Controls */}
         <div className="absolute top-4 right-4 z-[10] flex flex-col gap-2">
-           <button onClick={() => setIsMapExpanded(!isMapExpanded)} className="p-3 bg-white shadow-lg text-[#002D62] rounded-xl border border-slate-100"><Maximize2 size={20}/></button>
-           <button onClick={() => setIsTrafficVisible(!isTrafficVisible)} className={`p-3 shadow-lg rounded-xl border ${isTrafficVisible ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400'}`}><Zap size={20}/></button>
-           <button onClick={() => setIsFollowMode(!isFollowMode)} className={`p-3 shadow-lg rounded-xl border ${isFollowMode ? 'bg-[#002D62] text-amber-400' : 'bg-white text-slate-400'}`}><Eye size={20}/></button>
+           <button onClick={() => setIsMapExpanded(!isMapExpanded)} className="p-3 bg-white shadow-lg text-[#002D62] rounded-xl border border-slate-100 hover:bg-slate-50 transition-all" title="ขยายแผนที่"><Maximize2 size={20}/></button>
+           <button onClick={() => setIsTrafficVisible(!isTrafficVisible)} className={`p-3 shadow-lg rounded-xl border transition-all ${isTrafficVisible ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400'}`} title="การจราจร"><Zap size={20}/></button>
+           <button onClick={() => setIsFollowMode(!isFollowMode)} className={`p-3 shadow-lg rounded-xl border transition-all ${isFollowMode ? 'bg-[#002D62] text-amber-400' : 'bg-white text-slate-400'}`} title="ติดตามรถ"><Eye size={20}/></button>
         </div>
       </div>
 
       {/* Desktop Trip List - Shown side by side on large screens */}
       {!isMapExpanded && (
         <div className="hidden lg:flex w-full bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex-col overflow-hidden max-h-[250px]">
-           <h5 className="font-black text-[#002D62] mb-4 flex items-center gap-2"><FastForward size={18}/> Catalog Simulation</h5>
+           <h5 className="font-black text-[#002D62] mb-4 flex items-center gap-2 tracking-tight"><FastForward size={18} className="text-amber-500" /> รายการจำลองการเดินทาง (Catalog)</h5>
            <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
               {trips.map(t => (
-                <div key={t.id} onClick={() => {setSelectedTrip(t); setProgress(0);}} className={`min-w-[240px] p-5 rounded-2xl border-2 transition-all cursor-pointer ${selectedTrip?.id === t.id ? 'border-blue-400 bg-blue-50' : 'border-slate-50 hover:bg-slate-50'}`}>
-                  <p className="font-bold text-slate-800 text-sm mb-2 truncate">{t.missionName}</p>
-                  <p className="text-[10px] text-slate-400 uppercase font-black">{t.distanceKm} KM • {t.durationMin} MIN</p>
+                <div key={t.id} onClick={() => {setSelectedTrip(t); setProgress(0);}} className={`min-w-[260px] p-5 rounded-2xl border-2 transition-all cursor-pointer group ${selectedTrip?.id === t.id ? 'border-blue-400 bg-blue-50/50' : 'border-slate-50 hover:border-slate-200 hover:bg-slate-50'}`}>
+                  <p className="font-black text-slate-800 text-sm mb-2 truncate group-hover:text-blue-700">{t.missionName}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{t.distanceKm} กม.</span>
+                    <div className="w-1 h-1 rounded-full bg-slate-300" />
+                    <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">{t.durationMin} นาที</span>
+                  </div>
                 </div>
               ))}
            </div>

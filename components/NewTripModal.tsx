@@ -4,7 +4,7 @@ import {
   CheckCircle2, Plus, Search, Loader2, 
   Navigation, MousePointer2, AlertCircle,
   Maximize2, Minimize2, Trash2 as ClearIcon,
-  Save, Zap
+  Save, Zap, User, ArrowRight, Check
 } from 'lucide-react';
 import { Trip, VehicleProfile, Location } from '../types';
 import L from 'leaflet';
@@ -25,10 +25,10 @@ interface SearchSuggestion {
 }
 
 const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTrip, vehicles, editTrip }) => {
-  const [method, setMethod] = useState<'upload' | 'manual'>('manual');
   const [formData, setFormData] = useState({
     missionName: '',
     purpose: '',
+    driverName: '',
     date: new Date().toISOString().split('T')[0],
     time: '08:30',
     allowance: 0,
@@ -51,13 +51,11 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
   const [isSearching, setIsSearching] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
-  const [isTrafficVisible, setIsTrafficVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dieselPrice] = useState(32.94); 
 
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const trafficLayerRef = useRef<L.TileLayer | null>(null);
   const markersRef = useRef<{ start?: L.Marker, end?: L.Marker, path?: L.Polyline }>({});
 
   const [calcResults, setCalcResults] = useState({
@@ -74,6 +72,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
       setFormData({
         missionName: editTrip.missionName,
         purpose: editTrip.purpose,
+        driverName: editTrip.driverName || '',
         date: editTrip.startTime.split('T')[0],
         time: editTrip.startTime.split('T')[1].substring(0, 5),
         allowance: editTrip.allowance || 0,
@@ -83,12 +82,12 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
       setStartLoc(editTrip.startLocation);
       setEndLoc(editTrip.endLocation);
       setCurrentRoutePath(editTrip.routePath);
-      setMethod('manual');
       setLocationStep('end');
     } else if (isOpen) {
       setFormData({
         missionName: '',
         purpose: '',
+        driverName: '',
         date: new Date().toISOString().split('T')[0],
         time: '08:30',
         allowance: 0,
@@ -98,28 +97,9 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
       setStartLoc(null);
       setEndLoc(null);
       setCurrentRoutePath(undefined);
-      setMethod('manual');
       setLocationStep('start');
     }
   }, [isOpen, editTrip, vehicles]);
-
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    if (isTrafficVisible) {
-      if (!trafficLayerRef.current) {
-        trafficLayerRef.current = L.tileLayer('https://mt1.google.com/vt?lyrs=h,traffic&x={x}&y={y}&z={z}', {
-          maxZoom: 20,
-          opacity: 0.8
-        });
-      }
-      trafficLayerRef.current.addTo(mapRef.current);
-    } else {
-      if (trafficLayerRef.current) {
-        trafficLayerRef.current.remove();
-      }
-    }
-  }, [isTrafficVisible]);
 
   const getAddressFromCoords = async (lat: number, lng: number) => {
     try {
@@ -159,27 +139,17 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
 
         mapRef.current.fitBounds(markersRef.current.path.getBounds(), { padding: [40, 40] });
         updateResults(route.distance / 1000);
-      } else {
-        throw new Error('ไม่สามารถหาเส้นทางบนถนนได้');
       }
     } catch (err) {
-      setError('ใช้เส้นตรงแทน');
-      setCurrentRoutePath([[start.lat, start.lng], [end.lat, end.lng]]);
-      if (markersRef.current.path) markersRef.current.path.remove();
-      markersRef.current.path = L.polyline(
-        [[start.lat, start.lng], [end.lat, end.lng]],
-        { color: '#EF4444', weight: 4, dashArray: '10, 10', opacity: 0.6 }
-      ).addTo(mapRef.current);
-      
-      const directDist = L.latLng(start.lat, start.lng).distanceTo(L.latLng(end.lat, end.lng)) / 1000 * 1.3;
-      updateResults(directDist);
+      console.error("Routing error", err);
     } finally {
       setIsCalculating(false);
     }
   }, [selectedVehicle, dieselPrice, formData.allowance, formData.accommodation]);
 
-  const updateResults = (distance: number) => {
-    const roundedDist = Math.round(distance * 10) / 10;
+  const updateResults = (oneWayDistance: number) => {
+    const roundTripDist = (oneWayDistance * 2);
+    const roundedDist = Math.round(roundTripDist * 10) / 10;
     const fuelUsed = roundedDist / (selectedVehicle?.consumptionRate || 15);
     const fuelCost = fuelUsed * dieselPrice;
     const total = fuelCost + Number(formData.allowance) + Number(formData.accommodation);
@@ -204,14 +174,25 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
     }
   }, []);
 
+  const handleSelectSuggestion = (s: SearchSuggestion) => {
+    const lat = parseFloat(s.lat);
+    const lng = parseFloat(s.lon);
+    handleMapAction(lat, lng, s.display_name);
+    setSuggestions([]);
+    setMapSearch('');
+    if (mapRef.current) {
+      mapRef.current.setView([lat, lng], 16);
+    }
+  };
+
   useEffect(() => {
-    if (isOpen && method === 'manual' && mapContainerRef.current && !mapRef.current) {
+    if (isOpen && mapContainerRef.current && !mapRef.current) {
       const map = L.map(mapContainerRef.current, {
         center: [13.7563, 100.5018],
         zoom: 13,
         zoomControl: false,
         scrollWheelZoom: true,
-        tap: true // Essential for mobile
+        tap: true
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -232,7 +213,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
         mapRef.current = null;
       }
     };
-  }, [isOpen, method, handleMapAction]);
+  }, [isOpen, handleMapAction]);
 
   useEffect(() => {
     if (mapRef.current) {
@@ -247,7 +228,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
 
     if (startLoc) {
       if (!markersRef.current.start) {
-        const marker = L.marker([startLoc.lat, startLoc.lng], {
+        markersRef.current.start = L.marker([startLoc.lat, startLoc.lng], {
           draggable: true,
           icon: L.divIcon({
             className: 'custom-div-icon',
@@ -256,14 +237,11 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
             iconAnchor: [16, 32]
           })
         }).addTo(mapRef.current);
-
-        marker.on('dragend', async (e: L.LeafletEvent) => {
-          const m = e.target as L.Marker;
-          const pos = m.getLatLng();
-          const address = await getAddressFromCoords(pos.lat, pos.lng);
-          setStartLoc({ lat: pos.lat, lng: pos.lng, address });
+        markersRef.current.start.on('dragend', async (e: any) => {
+          const pos = e.target.getLatLng();
+          const addr = await getAddressFromCoords(pos.lat, pos.lng);
+          setStartLoc({ lat: pos.lat, lng: pos.lng, address: addr });
         });
-        markersRef.current.start = marker;
       } else {
         markersRef.current.start.setLatLng([startLoc.lat, startLoc.lng]);
       }
@@ -271,7 +249,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
 
     if (endLoc) {
       if (!markersRef.current.end) {
-        const marker = L.marker([endLoc.lat, endLoc.lng], {
+        markersRef.current.end = L.marker([endLoc.lat, endLoc.lng], {
           draggable: true,
           icon: L.divIcon({
             className: 'custom-div-icon',
@@ -280,14 +258,11 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
             iconAnchor: [16, 32]
           })
         }).addTo(mapRef.current);
-
-        marker.on('dragend', async (e: L.LeafletEvent) => {
-          const m = e.target as L.Marker;
-          const pos = m.getLatLng();
-          const address = await getAddressFromCoords(pos.lat, pos.lng);
-          setEndLoc({ lat: pos.lat, lng: pos.lng, address });
+        markersRef.current.end.on('dragend', async (e: any) => {
+          const pos = e.target.getLatLng();
+          const addr = await getAddressFromCoords(pos.lat, pos.lng);
+          setEndLoc({ lat: pos.lat, lng: pos.lng, address: addr });
         });
-        markersRef.current.end = marker;
       } else {
         markersRef.current.end.setLatLng([endLoc.lat, endLoc.lng]);
       }
@@ -298,24 +273,9 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
     }
   }, [startLoc, endLoc, fetchRoute]);
 
-  const handleSelectSuggestion = (s: SearchSuggestion) => {
-    const lat = parseFloat(s.lat);
-    const lng = parseFloat(s.lon);
-    handleMapAction(lat, lng, s.display_name);
-    if (mapRef.current) {
-      mapRef.current.setView([lat, lng], 17, { animate: true, duration: 1 });
-    }
-    setMapSearch('');
-    setSuggestions([]);
-  };
-
-  const handleSaveManual = () => {
-    if (!formData.missionName) {
-      alert('กรุณากรอกชื่อภารกิจ');
-      return;
-    }
-    if (!startLoc || !endLoc) {
-      alert('กรุณาเลือกจุดเริ่มต้นและจุดปลายทางบนแผนที่');
+  const handleSave = () => {
+    if (!formData.missionName || !startLoc || !endLoc) {
+      alert('กรุณากรอกข้อมูลและระบุจุดเริ่มต้น/ปลายทางบนแผนที่ให้ครบถ้วน');
       return;
     }
 
@@ -323,6 +283,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
       id: editTrip ? editTrip.id : 'T-' + Date.now(),
       missionName: formData.missionName,
       purpose: formData.purpose || 'ปฏิบัติราชการตามที่ได้รับมอบหมาย',
+      driverName: formData.driverName,
       department: 'ส่วนกลาง',
       startTime: `${formData.date}T${formData.time}:00Z`,
       endTime: `${formData.date}T17:00:00Z`,
@@ -375,15 +336,17 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 bg-[#002D62]/70 backdrop-blur-xl animate-in fade-in duration-300 overflow-hidden">
       <div className={`bg-white w-full h-full md:max-w-7xl md:h-[92vh] md:rounded-[3rem] shadow-2xl flex flex-col animate-in zoom-in-95 duration-500`}>
-        {/* Header - Optimized for Mobile */}
-        <div className="px-4 md:px-10 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white/80 backdrop-blur-md">
-          <div className="flex items-center gap-3 md:gap-6">
+        {/* Header */}
+        <div className="px-6 md:px-10 py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+          <div className="flex items-center gap-4 md:gap-6">
             <div className="w-10 h-10 md:w-12 md:h-12 bg-[#002D62] rounded-xl flex items-center justify-center text-amber-400">
               {editTrip ? <Save size={20} /> : <Plus size={20} />}
             </div>
             <div>
-              <h3 className="text-lg md:text-2xl font-black text-[#002D62] tracking-tight">{editTrip ? 'แก้ไขภารกิจ' : 'บันทึกทริปใหม่'}</h3>
-              <p className="hidden md:block text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ลากหมุดหรือคลิกบนแผนที่เพื่อปักหมุด</p>
+              <h3 className="text-lg md:text-2xl font-black text-[#002D62] tracking-tight">
+                {editTrip ? 'แก้ไขการเดินทาง' : 'สร้างการเดินทาง'}
+              </h3>
+              <p className="hidden md:block text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">ระบบบันทึกพิกัดและคำนวณงบประมาณอัตโนมัติ</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 md:p-3 bg-slate-50 text-slate-400 hover:text-red-500 rounded-xl transition-all">
@@ -392,118 +355,167 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
         </div>
 
         <div className="flex-1 overflow-hidden flex flex-col lg:flex-row relative">
-          {/* Sidebar - Stacks on Mobile */}
-          <div className={`${isMapExpanded ? 'hidden' : 'flex'} w-full lg:w-[32%] p-6 md:p-10 overflow-y-auto custom-scrollbar flex-col space-y-6 md:space-y-8 bg-white border-r border-slate-100 shrink-0`}>
+          {/* Info Side */}
+          <div className={`${isMapExpanded ? 'hidden' : 'flex'} w-full lg:w-[32%] p-6 md:p-10 overflow-y-auto custom-scrollbar flex-col space-y-6 bg-white border-r border-slate-100 shrink-0`}>
             <div className="space-y-4">
               <h5 className="text-[10px] font-black text-[#002D62] uppercase tracking-[0.25em] flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                ข้อมูลภารกิจ
+                ข้อมูลการเดินทาง
               </h5>
+              
               <div className="space-y-4">
-                <input 
-                  type="text" 
-                  value={formData.missionName}
-                  onChange={(e) => setFormData({...formData, missionName: e.target.value})}
-                  placeholder="ชื่อภารกิจ"
-                  className="w-full p-4 bg-slate-50 border-none rounded-xl font-bold text-slate-800 text-sm shadow-inner"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs" />
-                  <input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs" />
+                <div>
+                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">ชื่อภารกิจหลัก</label>
+                  <input 
+                    type="text" 
+                    value={formData.missionName}
+                    onChange={(e) => setFormData({...formData, missionName: e.target.value})}
+                    placeholder="ระบุชื่อภารกิจ"
+                    className="w-full p-4 bg-slate-50 border-none rounded-xl font-bold text-slate-800 text-sm shadow-inner focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
                 </div>
-                <select 
-                  value={formData.vehicleId}
-                  onChange={(e) => setFormData({...formData, vehicleId: e.target.value})}
-                  className="w-full p-4 bg-slate-50 border-none rounded-xl font-bold text-slate-800 text-sm shadow-inner"
-                >
-                  {vehicles.map(v => <option key={v.id} value={v.id}>{v.plateNumber} - {v.name}</option>)}
-                </select>
+
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="number" placeholder="เบี้ยเลี้ยง" value={formData.allowance || ''} onChange={(e) => setFormData({...formData, allowance: Number(e.target.value)})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs" />
-                  <input type="number" placeholder="ที่พัก" value={formData.accommodation || ''} onChange={(e) => setFormData({...formData, accommodation: Number(e.target.value)})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs" />
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">วันที่เดินทาง</label>
+                    <input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs shadow-inner" />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">เวลาที่เริ่ม</label>
+                    <input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs shadow-inner" />
+                  </div>
+                </div>
+
+                <div>
+                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">เจ้าหน้าที่พลขับ</label>
+                   <div className="relative group">
+                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-amber-500 transition-colors" size={16} />
+                     <input 
+                      type="text" 
+                      value={formData.driverName}
+                      onChange={(e) => setFormData({...formData, driverName: e.target.value})}
+                      placeholder="ระบุชื่อพลขับ"
+                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-xl font-bold text-slate-800 text-sm shadow-inner focus:ring-2 focus:ring-amber-500 outline-none"
+                    />
+                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">ยานพาหนะ</label>
+                  <select 
+                    value={formData.vehicleId}
+                    onChange={(e) => setFormData({...formData, vehicleId: e.target.value})}
+                    className="w-full p-4 bg-slate-50 border-none rounded-xl font-bold text-slate-800 text-sm shadow-inner outline-none"
+                  >
+                    {vehicles.map(v => <option key={v.id} value={v.id}>{v.plateNumber} - {v.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">เบี้ยเลี้ยง (฿)</label>
+                    <input type="number" value={formData.allowance || ''} onChange={(e) => setFormData({...formData, allowance: Number(e.target.value)})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs shadow-inner" />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">ค่าที่พัก (฿)</label>
+                    <input type="number" value={formData.accommodation || ''} onChange={(e) => setFormData({...formData, accommodation: Number(e.target.value)})} className="w-full p-3 bg-slate-50 border-none rounded-xl font-bold text-xs shadow-inner" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 mt-auto">
+            <div className="pt-6 mt-auto">
               <button 
-                onClick={handleSaveManual}
-                className="w-full py-4 bg-[#002D62] text-white rounded-2xl font-black text-sm shadow-xl hover:bg-indigo-900 active:scale-95 transition-all flex items-center justify-center gap-3"
+                onClick={handleSave}
+                className="w-full py-5 bg-[#002D62] text-white rounded-2xl font-black text-sm shadow-xl hover:bg-indigo-900 active:scale-95 transition-all flex items-center justify-center gap-3"
               >
                 <CheckCircle2 size={18} className="text-amber-400" />
-                บันทึกข้อมูลทริป
+                บันทึกข้อมูลการเดินทาง
               </button>
             </div>
           </div>
 
-          {/* Map Area */}
-          <div className="flex-1 flex flex-col relative bg-[#f1eee8] overflow-hidden">
-            <div className="absolute top-4 md:top-8 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-xl px-4 flex flex-col gap-2">
-              <div className="flex bg-white/95 backdrop-blur-2xl p-1 md:p-2 rounded-xl md:rounded-[1.5rem] shadow-xl border border-white">
-                <div className="flex-1 flex items-center gap-2 px-3">
-                  <Search className={`${isSearching ? 'text-amber-500 animate-pulse' : 'text-[#002D62]'}`} size={18} />
+          {/* Map Side */}
+          <div className="flex-1 flex flex-col relative bg-slate-100 overflow-hidden">
+            {/* Map Search Overlay */}
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-xl px-4 flex flex-col gap-2">
+              <div className="flex bg-white p-2 rounded-2xl shadow-2xl border border-slate-100 items-center">
+                <div className="flex-1 flex items-center gap-3 px-3">
+                  {isSearching ? <Loader2 className="animate-spin text-amber-500" size={18} /> : <Search className="text-[#002D62]" size={18} />}
                   <input 
                     type="text" 
-                    placeholder="ค้นหาสถานที่..." 
+                    placeholder="ค้นหาสถานที่เพื่อปักหมุด..." 
                     value={mapSearch}
                     onChange={(e) => setMapSearch(e.target.value)}
                     className="w-full py-2 bg-transparent outline-none font-bold text-slate-800 text-sm placeholder:text-slate-300"
                   />
                 </div>
+                <button 
+                  onClick={() => setIsMapExpanded(!isMapExpanded)}
+                  className="p-2 hover:bg-slate-50 rounded-xl transition-all text-[#002D62] hidden md:block"
+                >
+                  {isMapExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                </button>
               </div>
               
               {suggestions.length > 0 && (
                 <div className="bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden max-h-48 overflow-y-auto">
                    {suggestions.map((s, idx) => (
                      <button key={idx} onClick={() => handleSelectSuggestion(s)} className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-none text-xs">
-                        <p className="font-bold text-slate-800 truncate">{s.display_name.split(',')[0]}</p>
+                        <p className="font-black text-slate-800 truncate">{s.display_name.split(',')[0]}</p>
                         <p className="text-[10px] text-slate-400 truncate">{s.display_name}</p>
                      </button>
                    ))}
                 </div>
               )}
-
-              {/* Mobile Tab Control */}
-              <div className="flex justify-center mt-2">
-                <div className="flex bg-[#002D62] p-1 rounded-xl shadow-xl gap-1">
-                   <button onClick={() => setLocationStep('start')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${locationStep === 'start' ? 'bg-amber-500 text-white' : 'text-white/50'}`}>Start</button>
-                   <button onClick={() => setLocationStep('end')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${locationStep === 'end' ? 'bg-amber-500 text-white' : 'text-white/50'}`}>End</button>
-                </div>
-              </div>
             </div>
 
+            {/* Location Step Toggle - RESTORED */}
+            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[999] flex bg-white/90 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-slate-200 gap-1.5">
+               <button 
+                onClick={() => {
+                  setLocationStep('start');
+                  if (startLoc && mapRef.current) mapRef.current.setView([startLoc.lat, startLoc.lng], 16);
+                }}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${locationStep === 'start' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+               >
+                 <div className={`w-2 h-2 rounded-full ${startLoc ? 'bg-emerald-400 animate-pulse' : 'bg-current opacity-30'}`} />
+                 {startLoc ? <Check size={14} className="text-white" /> : <MapPin size={14} />}
+                 จุดเริ่มต้น
+               </button>
+               <div className="w-[1px] bg-slate-200 my-2" />
+               <button 
+                onClick={() => {
+                  setLocationStep('end');
+                  if (endLoc && mapRef.current) mapRef.current.setView([endLoc.lat, endLoc.lng], 16);
+                }}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${locationStep === 'end' ? 'bg-[#002D62] text-amber-400 shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+               >
+                 <div className={`w-2 h-2 rounded-full ${endLoc ? 'bg-emerald-400 animate-pulse' : 'bg-current opacity-30'}`} />
+                 {endLoc ? <Check size={14} className="text-amber-400" /> : <Navigation size={14} />}
+                 จุดปลายทาง
+               </button>
+            </div>
+
+            {/* Map Container */}
             <div ref={mapContainerRef} className="flex-1 z-[1]" />
 
-            {/* Float Stats - Bottom of Map */}
-            <div className="absolute bottom-4 left-4 right-4 z-[1000] lg:hidden">
-               <div className="bg-[#002D62] p-4 rounded-2xl text-white shadow-2xl flex justify-between items-center">
-                  <div>
-                    <p className="text-[8px] font-black text-white/50 uppercase tracking-widest">Total Estimated</p>
-                    <p className="text-xl font-black text-amber-400">฿{calcResults.totalCost.toLocaleString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[8px] font-black text-white/50 uppercase tracking-widest">Distance</p>
-                    <p className="text-sm font-bold">{calcResults.distance} km</p>
-                  </div>
-               </div>
-            </div>
-
-            {/* Desktop Stats - Only visible on LG */}
-            <div className={`hidden lg:grid grid-cols-4 p-8 bg-white/90 backdrop-blur-md border-t border-slate-100 shrink-0 z-[1000] gap-8 transition-all ${isMapExpanded ? 'h-0 p-0 overflow-hidden' : ''}`}>
+            {/* Summary Bar Desktop */}
+            <div className={`hidden lg:grid grid-cols-4 p-8 bg-white/95 backdrop-blur-md border-t border-slate-100 shrink-0 z-[1000] gap-8 transition-all duration-300 ${isMapExpanded ? 'h-0 p-0 opacity-0 overflow-hidden' : 'h-auto opacity-100'}`}>
                 <div className="flex flex-col">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Distance</p>
-                  <p className="text-2xl font-black text-slate-800">{calcResults.distance} km</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">ระยะทางรวม (ไป-กลับ)</p>
+                  <p className="text-2xl font-black text-slate-800">{calcResults.distance} กม.</p>
                 </div>
                 <div className="flex flex-col">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fuel Consumption</p>
-                  <p className="text-2xl font-black text-indigo-600">{calcResults.fuelUsed} L</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">เชื้อเพลิงที่ใช้</p>
+                  <p className="text-2xl font-black text-indigo-600">{calcResults.fuelUsed} ลิตร</p>
                 </div>
                 <div className="flex flex-col">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fuel Cost</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">งบค่าเชื้อเพลิง</p>
                   <p className="text-2xl font-black text-slate-800">฿{calcResults.fuelCost.toLocaleString()}</p>
                 </div>
                 <div className="bg-[#002D62] p-4 rounded-2xl text-center">
-                  <p className="text-[9px] font-black text-white/50 uppercase tracking-widest">Grand Total</p>
+                  <p className="text-[9px] font-black text-white/50 uppercase tracking-widest">รวมงบประมาณทั้งสิ้น</p>
                   <p className="text-2xl font-black text-amber-400">฿{calcResults.totalCost.toLocaleString()}</p>
                 </div>
             </div>
