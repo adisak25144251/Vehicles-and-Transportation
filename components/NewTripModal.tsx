@@ -470,14 +470,14 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
               )}
             </div>
 
-            {/* Location Step Toggle - RESTORED */}
-            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[999] flex bg-white/90 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-slate-200 gap-1.5">
+            {/* Location Step Toggle - RESTORED & ENHANCED */}
+            <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[999] flex bg-white/95 backdrop-blur-md p-2 rounded-[2rem] shadow-2xl border border-slate-100 gap-2">
                <button 
                 onClick={() => {
                   setLocationStep('start');
                   if (startLoc && mapRef.current) mapRef.current.setView([startLoc.lat, startLoc.lng], 16);
                 }}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${locationStep === 'start' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${locationStep === 'start' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
                >
                  <div className={`w-2 h-2 rounded-full ${startLoc ? 'bg-emerald-400 animate-pulse' : 'bg-current opacity-30'}`} />
                  {startLoc ? <Check size={14} className="text-white" /> : <MapPin size={14} />}
@@ -489,7 +489,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
                   setLocationStep('end');
                   if (endLoc && mapRef.current) mapRef.current.setView([endLoc.lat, endLoc.lng], 16);
                 }}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${locationStep === 'end' ? 'bg-[#002D62] text-amber-400 shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${locationStep === 'end' ? 'bg-[#002D62] text-amber-400 shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}
                >
                  <div className={`w-2 h-2 rounded-full ${endLoc ? 'bg-emerald-400 animate-pulse' : 'bg-current opacity-30'}`} />
                  {endLoc ? <Check size={14} className="text-amber-400" /> : <Navigation size={14} />}
@@ -514,7 +514,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">งบค่าเชื้อเพลิง</p>
                   <p className="text-2xl font-black text-slate-800">฿{calcResults.fuelCost.toLocaleString()}</p>
                 </div>
-                <div className="bg-[#002D62] p-4 rounded-2xl text-center">
+                <div className="bg-[#002D62] p-4 rounded-2xl text-center shadow-lg shadow-indigo-900/20">
                   <p className="text-[9px] font-black text-white/50 uppercase tracking-widest">รวมงบประมาณทั้งสิ้น</p>
                   <p className="text-2xl font-black text-amber-400">฿{calcResults.totalCost.toLocaleString()}</p>
                 </div>

@@ -1,8 +1,16 @@
+
 export enum UserRole {
   ADMIN = 'ADMIN',
   MANAGER = 'MANAGER',
   OFFICER = 'OFFICER',
   AUDITOR = 'AUDITOR'
+}
+
+export interface User {
+  fullName: string;
+  username: string;
+  position: string;
+  role: UserRole;
 }
 
 export type VehicleStatus = 'USABLE' | 'DAMAGED' | 'DISPOSAL';

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Trip } from '../types';
 import { 
@@ -18,6 +19,7 @@ const Dashboard: React.FC<Props> = ({ trips, onNavigateToAI }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareStep, setShareStep] = useState<'options' | 'success'>('options');
+  const [chartView, setChartView] = useState<'dist' | 'trips'>('dist');
 
   const totalKm = trips.reduce((acc, t) => acc + t.distanceKm, 0);
   const totalFuel = trips.reduce((acc, t) => acc + t.fuelCost, 0);
@@ -61,7 +63,7 @@ const Dashboard: React.FC<Props> = ({ trips, onNavigateToAI }) => {
   };
 
   return (
-    <div className="space-y-4 md:space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-4 md:space-y-8 animate-in fade-in duration-700 font-['Sarabun']">
       {/* Top Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {summaryData.map((item, idx) => (
@@ -91,26 +93,45 @@ const Dashboard: React.FC<Props> = ({ trips, onNavigateToAI }) => {
               <p className="text-xs md:text-sm text-slate-400 font-medium">ปริมาณการเดินทางรายสัปดาห์</p>
             </div>
             <div className="flex bg-slate-50 p-1 rounded-xl w-fit">
-              <button className="px-3 md:px-4 py-1.5 bg-white shadow-sm rounded-lg text-[10px] md:text-xs font-bold text-slate-800">Distance</button>
-              <button className="px-3 md:px-4 py-1.5 text-[10px] md:text-xs font-bold text-slate-400 hover:text-slate-600">Trips</button>
+              <button 
+                onClick={() => setChartView('dist')}
+                className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${chartView === 'dist' ? 'bg-white shadow-sm text-[#002D62]' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Distance
+              </button>
+              <button 
+                onClick={() => setChartView('trips')}
+                className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all ${chartView === 'trips' ? 'bg-white shadow-sm text-[#002D62]' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                Trips
+              </button>
             </div>
           </div>
           <div className="h-[250px] md:h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="colorDist" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#B8860B" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#B8860B" stopOpacity={0}/>
+                  <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={chartView === 'dist' ? '#B8860B' : '#002D62'} stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor={chartView === 'dist' ? '#B8860B' : '#002D62'} stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 600}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 600}} />
                 <Tooltip 
-                  contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px'}}
+                  contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontFamily: 'Sarabun'}}
+                  formatter={(value: any) => [value, chartView === 'dist' ? 'ระยะทาง (กม.)' : 'จำนวนทริป']}
                 />
-                <Area type="monotone" dataKey="dist" stroke="#B8860B" strokeWidth={3} fillOpacity={1} fill="url(#colorDist)" />
+                <Area 
+                  type="monotone" 
+                  dataKey={chartView} 
+                  stroke={chartView === 'dist' ? '#B8860B' : '#002D62'} 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#colorPrimary)"
+                  animationDuration={1000}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>

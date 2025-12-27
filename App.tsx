@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, Map as MapIcon, FileText, Settings, PlusCircle, BrainCircuit, 
   TrendingUp, FileUp, ShieldCheck, Activity, History, Menu, X, Truck, Gavel, 
-  Copy, EyeOff, Eye, Globe
+  Copy, EyeOff, Eye, Globe, LogOut, User as UserIcon
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import TripTable from './components/TripTable';
@@ -15,11 +16,13 @@ import AuditLogs from './components/AuditLogs';
 import FleetManager from './components/FleetManager';
 import PolicyEngine from './components/PolicyEngine';
 import TripTemplates from './components/TripTemplates';
-import { Trip, CostConfig, VehicleProfile } from './types';
+import AuthPage from './components/AuthPage';
+import { Trip, CostConfig, VehicleProfile, User } from './types';
 import { MOCK_TRIPS, MOCK_VEHICLES } from './constants';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trips' | 'map' | 'ai' | 'cost' | 'import' | 'quality' | 'audit' | 'fleet' | 'policy' | 'templates'>('dashboard');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [trips, setTrips] = useState<Trip[]>(MOCK_TRIPS as any[]);
   const [vehicles, setVehicles] = useState<VehicleProfile[]>(MOCK_VEHICLES as VehicleProfile[]);
   const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
@@ -33,6 +36,28 @@ const App: React.FC = () => {
     enableCO2: true,
     piiGuardActive: false
   });
+
+  // Check Session on mount
+  useEffect(() => {
+    const session = localStorage.getItem('gov_session_active');
+    if (session) {
+      try {
+        setCurrentUser(JSON.parse(session));
+      } catch {
+        localStorage.removeItem('gov_session_active');
+      }
+    }
+  }, []);
+
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('gov_session_active', JSON.stringify(user));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('gov_session_active');
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -50,16 +75,16 @@ const App: React.FC = () => {
   }, []);
 
   const menuItems = [
-    { id: 'dashboard', label: lang === 'TH' ? 'ภาพรวม' : 'Overview', icon: LayoutDashboard },
-    { id: 'trips', label: lang === 'TH' ? 'รายการเดินทาง' : 'Trips', icon: FileText },
-    { id: 'templates', label: lang === 'TH' ? 'เทมเพลตภารกิจ' : 'Templates', icon: Copy },
+    { id: 'dashboard', label: 'ภาพรวม', icon: LayoutDashboard },
+    { id: 'trips', label: 'รายการเดินทาง', icon: FileText },
+    { id: 'templates', label: 'เทมเพลตภารกิจ', icon: Copy },
     { id: 'map', label: 'Map Replay', icon: MapIcon },
     { id: 'ai', label: 'AI Analytics', icon: BrainCircuit },
-    { id: 'fleet', label: lang === 'TH' ? 'จัดการยานพาหนะ' : 'Fleet', icon: Truck },
-    { id: 'policy', label: lang === 'TH' ? 'นโยบายการเบิกจ่าย' : 'Policies', icon: Gavel },
-    { id: 'cost', label: lang === 'TH' ? 'ตั้งค่าต้นทุน' : 'Settings', icon: Settings },
+    { id: 'fleet', label: 'จัดการยานพาหนะ', icon: Truck },
+    { id: 'policy', label: 'นโยบายการเบิกจ่าย', icon: Gavel },
+    { id: 'cost', label: 'ตั้งค่าต้นทุน', icon: Settings },
     { id: 'import', label: 'Import Data', icon: FileUp },
-    { id: 'quality', label: lang === 'TH' ? 'คุณภาพข้อมูล' : 'Data Quality', icon: Activity },
+    { id: 'quality', label: 'คุณภาพข้อมูล', icon: Activity },
     { id: 'audit', label: 'Audit Trail', icon: History },
   ];
 
@@ -84,6 +109,11 @@ const App: React.FC = () => {
   const handleAddVehicle = (v: VehicleProfile) => setVehicles(prev => [...prev, v]);
   const handleEditVehicle = (updatedV: VehicleProfile) => setVehicles(prev => prev.map(v => v.id === updatedV.id ? updatedV : v));
   const handleDeleteVehicle = (id: string) => setVehicles(prev => prev.filter(v => v.id !== id));
+
+  // If NOT Logged in -> Force Login Page
+  if (!currentUser) {
+    return <AuthPage onLogin={handleLogin} />;
+  }
 
   const renderContent = () => {
     switch (activeTab) {
@@ -142,7 +172,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-['Sarabun']">
       {isMobile && isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 transition-opacity backdrop-blur-sm" 
@@ -160,11 +190,16 @@ const App: React.FC = () => {
         <div className="p-6 flex items-center justify-between border-b border-white/10 shrink-0">
           {(isSidebarOpen || !isMobile) && (
             <div className={`flex flex-col animate-in fade-in transition-opacity duration-300 ${!isSidebarOpen && !isMobile ? 'opacity-0' : 'opacity-100'}`}>
-              <span className="font-bold text-3xl tracking-tight text-white">BPP</span>
-              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-[0.1em]">งานยานพาหนะและขนส่ง</span>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-[#002D62] font-black text-xs leading-none">BPP</div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-base leading-tight tracking-tight text-white">งานยานพาหนะ</span>
+                  <span className="font-medium text-xs leading-tight text-white/60">และขนส่ง</span>
+                </div>
+              </div>
             </div>
           )}
-          {(!isSidebarOpen && !isMobile) && <div className="mx-auto text-amber-400 font-black text-xl">BPP</div>}
+          {(!isSidebarOpen && !isMobile) && <div className="mx-auto text-amber-400 font-black text-xs">BPP</div>}
           
           {isMobile && (
             <button onClick={() => setSidebarOpen(false)} className="p-1.5 hover:bg-white/10 rounded-lg">
@@ -186,15 +221,19 @@ const App: React.FC = () => {
               }`}
             >
               <item.icon size={20} className={`shrink-0 ${activeTab === item.id ? 'text-white' : 'text-amber-400/80 group-hover:text-amber-400'}`} />
-              {(isSidebarOpen || isMobile) && <span className="ml-4 font-medium text-sm whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
+              {(isSidebarOpen || isMobile) && <span className="ml-4 font-bold text-sm tracking-normal whitespace-nowrap overflow-hidden text-ellipsis">{item.label}</span>}
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/10 bg-black/10 shrink-0 text-center">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-              {(isSidebarOpen || isMobile) ? 'Secured Session' : 'SEC'}
-            </span>
+        <div className="p-4 border-t border-white/10 bg-black/10 shrink-0">
+            <button 
+              onClick={handleLogout}
+              className={`w-full flex items-center p-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all ${!isSidebarOpen && !isMobile ? 'justify-center' : ''}`}
+            >
+              <LogOut size={20} />
+              {(isSidebarOpen || isMobile) && <span className="ml-4 font-bold text-sm tracking-normal">ออกจากระบบ</span>}
+            </button>
         </div>
       </aside>
 
@@ -217,13 +256,17 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2 md:gap-5">
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-3">
+              <div className="flex flex-col items-end mr-2">
+                 <span className="text-sm font-bold text-[#002D62]">{currentUser?.fullName}</span>
+                 <span className="text-[10px] font-medium text-slate-400 tracking-normal">{currentUser?.position}</span>
+              </div>
               <button 
                 onClick={() => setPiiGuard(!piiGuard)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black transition-all ${piiGuard ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${piiGuard ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
               >
                 {piiGuard ? <EyeOff size={12} /> : <Eye size={12} />}
-                PII GUARD {piiGuard ? 'ON' : 'OFF'}
+                PII GUARD
               </button>
               <button onClick={() => setLang(lang === 'TH' ? 'EN' : 'TH')} className="px-2 py-1.5 hover:bg-slate-50 rounded-lg flex items-center gap-1.5 text-[10px] font-bold text-slate-600 border border-transparent hover:border-slate-200 transition-all">
                 <Globe size={14} className="text-amber-500" />
@@ -231,8 +274,8 @@ const App: React.FC = () => {
               </button>
             </div>
             <div className="h-8 w-[1px] bg-slate-200" />
-            <div className="w-8 h-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
-               <ShieldCheck size={18} />
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#002D62] shadow-sm">
+               <ShieldCheck size={20} />
             </div>
           </div>
         </header>
