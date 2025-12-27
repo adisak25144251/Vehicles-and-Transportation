@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trip } from '../types';
 import { 
@@ -57,9 +58,11 @@ const TripMap: React.FC<Props> = ({ trips }) => {
         tap: true
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 19,
+      // SET HYBRID AS DEFAULT: Google Maps Hybrid (Satellite + Labels)
+      // lyrs=y is Hybrid, lyrs=s is Satellite, lyrs=m is Roadmap, lyrs=p is Terrain
+      L.tileLayer('https://mt1.google.com/vt?lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps',
+        maxZoom: 20,
       }).addTo(map);
 
       map.on('zoomend', () => setSimZoom(map.getZoom()));
@@ -78,7 +81,11 @@ const TripMap: React.FC<Props> = ({ trips }) => {
     if (!mapRef.current) return;
     if (isTrafficVisible) {
       if (!trafficLayerRef.current) {
-        trafficLayerRef.current = L.tileLayer('https://mt1.google.com/vt?lyrs=h,traffic&x={x}&y={y}&z={z}', { maxZoom: 20, opacity: 0.8 });
+        // Overlay only roads and traffic on top of hybrid
+        trafficLayerRef.current = L.tileLayer('https://mt1.google.com/vt?lyrs=h,traffic&x={x}&y={y}&z={z}', { 
+          maxZoom: 20, 
+          opacity: 0.8 
+        });
       }
       trafficLayerRef.current.addTo(mapRef.current);
     } else if (trafficLayerRef.current) {
@@ -113,15 +120,16 @@ const TripMap: React.FC<Props> = ({ trips }) => {
     }).addTo(mapRef.current);
 
     if (routePath && routePath.length > 0) {
-      markersRef.current.path = L.polyline(routePath, { color: '#002D62', weight: 8, opacity: 0.1, lineCap: 'round' }).addTo(mapRef.current);
-      markersRef.current.passedPath = L.polyline([], { color: '#3B82F6', weight: 8, opacity: 0.8, lineCap: 'round' }).addTo(mapRef.current);
+      // Adjusted path colors for better contrast on Satellite/Hybrid imagery
+      markersRef.current.path = L.polyline(routePath, { color: '#FFFFFF', weight: 8, opacity: 0.3, lineCap: 'round' }).addTo(mapRef.current);
+      markersRef.current.passedPath = L.polyline([], { color: '#F59E0B', weight: 8, opacity: 0.9, lineCap: 'round' }).addTo(mapRef.current);
       mapRef.current.setView([startLocation.lat, startLocation.lng], 16);
     }
 
     markersRef.current.vehicle = L.marker([startLocation.lat, startLocation.lng], {
       icon: L.divIcon({
         className: 'custom-div-icon',
-        html: `<div id="replay-vehicle" class="bg-amber-500 w-10 h-10 rounded-full border-2 border-white shadow-xl flex items-center justify-center text-white transition-transform duration-300 transform-gpu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg></div>`,
+        html: `<div id="replay-vehicle" class="bg-blue-500 w-10 h-10 rounded-full border-2 border-white shadow-xl flex items-center justify-center text-white transition-transform duration-300 transform-gpu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg></div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20]
       })
