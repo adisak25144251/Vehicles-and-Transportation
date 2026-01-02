@@ -1,0 +1,50 @@
+type User @table {
+  displayName: String!
+  createdAt: Timestamp!
+  email: String
+  photoUrl: String
+}
+
+type Vehicle @table {
+  user: User!
+  make: String!
+  model: String!
+  year: Int!
+  createdAt: Timestamp!
+  licensePlate: String
+  VIN: String
+  color: String
+  purchaseDate: Date
+  odometer: Int
+}
+
+type FuelLog @table {
+  vehicle: Vehicle!
+  date: Date!
+  mileage: Int!
+  gallons: Float!
+  pricePerGallon: Float!
+  createdAt: Timestamp!
+  fuelType: String
+  station: String
+}
+
+type MaintenanceTask @table {
+  vehicle: Vehicle!
+  description: String!
+  dueDate: Date!
+  status: String!
+  createdAt: Timestamp!
+  completionDate: Date
+  cost: Float
+  notes: String
+  mileageAtService: Int
+}
+
+type ImportantDate @table {
+  vehicle: Vehicle!
+  name: String!
+  date: Date!
+  createdAt: Timestamp!
+  notes: String
+}
