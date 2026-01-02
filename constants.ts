@@ -1,5 +1,5 @@
 
-import { VehicleProfile } from './types';
+import { VehicleProfile, Trip } from './types';
 
 export const COLORS = {
   NAVY: '#002D62',
@@ -33,7 +33,11 @@ export const MOCK_VEHICLES: VehicleProfile[] = [
   }
 ];
 
-export const MOCK_TRIPS = [
+/**
+ * Explicitly typed MOCK_TRIPS to satisfy Trip interface requirements,
+ * particularly for the 'status' property which uses string literals.
+ */
+export const MOCK_TRIPS: Trip[] = [
   {
     id: 't1',
     missionName: 'ตรวจเยี่ยมราชการเขต 5',
