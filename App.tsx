@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  LayoutDashboard, Map as MapIcon, FileText, Settings, PlusCircle, BrainCircuit, 
-  TrendingUp, FileUp, ShieldCheck, Activity, History, Menu, X, Truck, Gavel, 
-  Copy, EyeOff, Eye, Globe, LogOut, Cloud, RefreshCw, CheckCircle2, CloudOff
+  LayoutDashboard, Map as MapIcon, FileText, Settings, Truck, Gavel, 
+  Copy, EyeOff, Eye, Globe, LogOut, Cloud, RefreshCw, CheckCircle2, CloudOff,
+  Radar, Activity, History, Menu, X, BrainCircuit, FileUp, ShieldCheck,
+  FileCheck, ShieldAlert, Siren, Signal, Terminal, Lock, BookOpen
 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import TripTable from './components/TripTable';
@@ -16,15 +17,54 @@ import AuditLogs from './components/AuditLogs';
 import FleetManager from './components/FleetManager';
 import PolicyEngine from './components/PolicyEngine';
 import TripTemplates from './components/TripTemplates';
+import VehicleTracking from './components/VehicleTracking';
+import RequestManager from './components/RequestManager';
+import GeofenceManager from './components/GeofenceManager';
+import SafetyConsole from './components/SafetyConsole';
+import DriverBehaviorDashboard from './components/DriverBehaviorDashboard';
+import DataQualityCenter from './components/DataQualityCenter'; 
+import OpsDashboard from './components/OpsDashboard'; 
+import PrivacyConsole from './components/PrivacyConsole';
+import UserManual from './components/UserManual';
 import AuthPage from './components/AuthPage';
-import { Trip, CostConfig, VehicleProfile, User } from './types';
+import DriverMobileView from './components/DriverMobileView';
+import AIBot from './components/AIBot'; // Imported FOCI AI Bot
+import { Trip, CostConfig, VehicleProfile, User, UserRole } from './types';
 import { MOCK_TRIPS, MOCK_VEHICLES } from './constants';
 import { tripService, vehicleService, configService } from './services/apiService';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'trips' | 'map' | 'ai' | 'cost' | 'import' | 'quality' | 'audit' | 'fleet' | 'policy' | 'templates'>('dashboard');
+  // --- DRIVER MODE LOGIC ---
+  const [driverSessionId, setDriverSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check URL params for driver token (e.g., ?driver_token=FLEETQR_...)
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('driver_token');
+    if (token) {
+      setDriverSessionId(token);
+    }
+  }, []);
+
+  if (driverSessionId) {
+    return (
+      <DriverMobileView 
+        sessionId={driverSessionId} 
+        onExit={() => {
+          setDriverSessionId(null);
+          window.history.replaceState({}, '', window.location.pathname);
+        }} 
+      />
+    );
+  }
+  // -------------------------
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'trips' | 'map' | 'tracking' | 'requests' | 'geofence' | 'safety' | 'scoring' | 'data_quality' | 'ai' | 'cost' | 'import' | 'quality' | 'audit' | 'fleet' | 'policy' | 'templates' | 'ops' | 'privacy' | 'manual'>('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Navigation State
+  const [trackingTargetId, setTrackingTargetId] = useState<string | null>(null);
   
   // Sync Status States
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'saved' | 'error'>('idle');
@@ -41,7 +81,6 @@ const App: React.FC = () => {
 
   const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [lang, setLang] = useState<'TH' | 'EN'>('TH');
   const [piiGuard, setPiiGuard] = useState(false);
 
   // Load Initial Data with graceful degradation
@@ -61,7 +100,6 @@ const App: React.FC = () => {
         if (savedConfig) setCostConfig(savedConfig);
       } catch (err) {
         console.error("Initialization Error:", err);
-        // Fallback to mocks if critical error
         setTrips(MOCK_TRIPS);
         setVehicles(MOCK_VEHICLES);
       } finally {
@@ -83,7 +121,7 @@ const App: React.FC = () => {
         } catch (e) {
           setSyncStatus('error');
         }
-      }, 2000); // 2 seconds debounce
+      }, 2000);
       return () => clearTimeout(timeout);
     }
   }, [trips, isLoading]);
@@ -135,6 +173,12 @@ const App: React.FC = () => {
 
   const menuItems = [
     { id: 'dashboard', label: 'ภาพรวม', icon: LayoutDashboard },
+    { id: 'tracking', label: 'ติดตามยานพาหนะ', icon: Radar },
+    { id: 'safety', label: 'ศูนย์แจ้งเหตุ (SOS)', icon: Siren },
+    { id: 'scoring', label: 'คะแนนพฤติกรรม', icon: Activity },
+    { id: 'data_quality', label: 'Data Quality', icon: Signal },
+    { id: 'geofence', label: 'Geofence Zone', icon: ShieldAlert },
+    { id: 'requests', label: 'อนุมัติการใช้รถ', icon: FileCheck },
     { id: 'trips', label: 'รายการเดินทาง', icon: FileText },
     { id: 'templates', label: 'เทมเพลตภารกิจ', icon: Copy },
     { id: 'map', label: 'Map Replay', icon: MapIcon },
@@ -145,6 +189,9 @@ const App: React.FC = () => {
     { id: 'import', label: 'Import Data', icon: FileUp },
     { id: 'quality', label: 'คุณภาพข้อมูล', icon: Activity },
     { id: 'audit', label: 'Audit Trail', icon: History },
+    { id: 'ops', label: 'Ops Monitoring', icon: Terminal },
+    { id: 'privacy', label: 'Privacy & Governance', icon: Lock },
+    { id: 'manual', label: 'คู่มือการใช้งาน', icon: BookOpen },
   ];
 
   const handleAddTrip = (newTrips: Trip[]) => {
@@ -161,6 +208,11 @@ const App: React.FC = () => {
     setTrips(prev => prev.filter(t => t.id !== id));
   };
 
+  const handleNavigateToTracking = (vehicleId: string) => {
+    setTrackingTargetId(vehicleId);
+    setActiveTab('tracking');
+  };
+
   if (!currentUser) return <AuthPage onLogin={handleLogin} />;
   
   if (isLoading) return (
@@ -169,11 +221,6 @@ const App: React.FC = () => {
         <div className="w-16 h-16 bg-amber-500 rounded-3xl flex items-center justify-center text-[#002D62] font-black text-xl mx-auto shadow-2xl">BPP</div>
         <div className="space-y-2">
           <p className="font-bold tracking-widest uppercase text-xs">Connecting Secure Cloud...</p>
-          <div className="flex justify-center gap-1">
-             <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce delay-75"/>
-             <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce delay-150"/>
-             <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce delay-300"/>
-          </div>
         </div>
       </div>
     </div>
@@ -223,7 +270,6 @@ const App: React.FC = () => {
             <h2 className="text-sm md:text-xl font-bold text-[#002D62] tracking-tight line-clamp-1">{menuItems.find(i => i.id === activeTab)?.label}</h2>
           </div>
           <div className="flex items-center gap-2 md:gap-5">
-            {/* Sync Status Indicator */}
             <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-full border bg-slate-50 border-slate-100 transition-all duration-500">
                {syncStatus === 'syncing' && (
                  <>
@@ -259,9 +305,6 @@ const App: React.FC = () => {
               <button onClick={() => setPiiGuard(!piiGuard)} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${piiGuard ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
                 {piiGuard ? <EyeOff size={12} /> : <Eye size={12} />} PII GUARD
               </button>
-              <button onClick={() => setLang(lang === 'TH' ? 'EN' : 'TH')} className="px-2 py-1.5 hover:bg-slate-50 rounded-lg text-[10px] font-bold text-slate-600 border border-transparent hover:border-slate-200 transition-all">
-                <Globe size={14} className="text-amber-500" /> {lang}
-              </button>
             </div>
             <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#002D62] shadow-sm"><ShieldCheck size={20} /></div>
           </div>
@@ -269,9 +312,15 @@ const App: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#F8FAFC] custom-scrollbar">
           <div className="max-w-full lg:max-w-7xl mx-auto pb-20">
-            {activeTab === 'dashboard' && <Dashboard trips={trips} onNavigateToAI={() => setActiveTab('ai')} />}
+            {activeTab === 'dashboard' && <Dashboard trips={trips} vehicles={vehicles} onNavigateToAI={() => setActiveTab('ai')} />}
             {activeTab === 'trips' && <TripTable trips={trips} vehicles={vehicles} piiGuard={piiGuard} onDelete={handleDeleteTrip} onAddTrip={handleAddTrip} onUpdateTrip={handleUpdateTrip} />}
             {activeTab === 'map' && <TripMap trips={trips} />}
+            {activeTab === 'tracking' && <VehicleTracking vehicles={vehicles} userRole={currentUser?.role} targetVehicleId={trackingTargetId} />}
+            {activeTab === 'requests' && <RequestManager currentUserRole={currentUser?.role.toString()} />}
+            {activeTab === 'geofence' && <GeofenceManager />}
+            {activeTab === 'safety' && <SafetyConsole />}
+            {activeTab === 'scoring' && <DriverBehaviorDashboard />}
+            {activeTab === 'data_quality' && <DataQualityCenter />}
             {activeTab === 'ai' && <AIInsightsPanel trips={trips} />}
             {activeTab === 'cost' && <CostSettings config={costConfig} setConfig={setCostConfig} vehicles={vehicles} setVehicles={setVehicles} />}
             {activeTab === 'import' && <ImportPanel onImport={handleAddTrip} />}
@@ -280,8 +329,21 @@ const App: React.FC = () => {
             {activeTab === 'fleet' && <FleetManager vehicles={vehicles} onAddVehicle={(v) => setVehicles([...vehicles, v])} onEditVehicle={(v) => setVehicles(vehicles.map(ov => ov.id === v.id ? v : ov))} onDeleteVehicle={(id) => setVehicles(vehicles.filter(v => v.id !== id))} />}
             {activeTab === 'policy' && <PolicyEngine />}
             {activeTab === 'templates' && <TripTemplates onUse={(t) => handleAddTrip([{ ...MOCK_TRIPS[0], id: 'T-'+Date.now(), missionName: t.name } as Trip])} />}
+            {activeTab === 'ops' && <OpsDashboard />}
+            {activeTab === 'privacy' && <PrivacyConsole />} 
+            {activeTab === 'manual' && <UserManual />}
           </div>
         </div>
+        
+        {/* FOCI AI Bot - Always Visible */}
+        <AIBot 
+          contextData={{
+            trips: trips,
+            vehicles: vehicles,
+            config: costConfig,
+            userRole: currentUser?.role
+          }} 
+        />
       </main>
 
       <style>{`.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }`}</style>

@@ -18,7 +18,15 @@ export const MOCK_VEHICLES: VehicleProfile[] = [
     consumptionRate: 12.5,
     wearAndTearRate: 2.5,
     acquisitionDate: '2020-01-15',
-    status: 'USABLE'
+    status: 'USABLE',
+    // Lifecycle Data
+    currentOdometer: 145020,
+    nextMaintenanceOdometer: 150000,
+    lastMaintenanceDate: '2024-01-10',
+    lastMaintenanceOdometer: 140000,
+    totalFuelCost: 350000,
+    totalMaintenanceCost: 45000,
+    purchasePrice: 1200000
   },
   {
     id: 'v2',
@@ -29,14 +37,18 @@ export const MOCK_VEHICLES: VehicleProfile[] = [
     consumptionRate: 10.0,
     wearAndTearRate: 3.5,
     acquisitionDate: '2018-05-20',
-    status: 'DAMAGED'
+    status: 'MAINTENANCE',
+    // Lifecycle Data
+    currentOdometer: 280500,
+    nextMaintenanceOdometer: 280000, // Overdue!
+    lastMaintenanceDate: '2023-11-05',
+    lastMaintenanceOdometer: 270000,
+    totalFuelCost: 850000,
+    totalMaintenanceCost: 120000,
+    purchasePrice: 1500000
   }
 ];
 
-/**
- * Explicitly typed MOCK_TRIPS to satisfy Trip interface requirements,
- * particularly for the 'status' property which uses string literals.
- */
 export const MOCK_TRIPS: Trip[] = [
   {
     id: 't1',
@@ -57,7 +69,8 @@ export const MOCK_TRIPS: Trip[] = [
     accommodation: 0,
     otherCosts: 60,
     efficiencyScore: 85,
-    status: 'COMPLETED'
+    status: 'COMPLETED',
+    privacyLevel: 'STANDARD'
   }
 ];
 

@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { Trip } from '../types';
 import { 
   FileUp, 
   CheckCircle2, 
-  AlertTriangle, 
   Upload,
   Info,
   X,
@@ -38,6 +36,7 @@ const ImportPanel: React.FC<Props> = ({ onImport }) => {
 
   const handleProcessImport = () => {
     setProcessing(true);
+
     // Simulation of parsing and extracting trips
     setTimeout(() => {
       const importedTrips: Trip[] = files.map((file, idx) => ({
@@ -55,13 +54,20 @@ const ImportPanel: React.FC<Props> = ({ onImport }) => {
         participants: ['ผู้นำเข้าข้อมูล'],
         vehicleId: 'v1',
         fuelCost: Math.floor(Math.random() * 500) + 100,
-        // FIX: Added required allowance and accommodation properties
+
+        // ✅ Required fields (ตาม Trip type ในโปรเจกต์)
         allowance: 0,
         accommodation: 0,
         otherCosts: 50,
+
+        // ✅ Fix: เพิ่ม privacyLevel ให้ครบตาม type Trip
+        // ใช้ Trip['privacyLevel'] เพื่อให้ตรง type ในระบบ (ไม่เดา enum/string ผิด)
+        privacyLevel: ('NORMAL' as Trip['privacyLevel']),
+
         efficiencyScore: 80 + Math.floor(Math.random() * 20),
         status: 'COMPLETED'
       }));
+
       onImport(importedTrips);
       setProcessing(false);
       setFiles([]);
@@ -106,7 +112,11 @@ const ImportPanel: React.FC<Props> = ({ onImport }) => {
             type="file" 
             multiple 
             disabled={processing}
-            onChange={(e) => e.target.files && setFiles(prev => [...prev, ...Array.from(e.target.files!)])}
+            onChange={(e) => {
+              if (e.target.files) {
+                setFiles(prev => [...prev, ...Array.from(e.target.files)]);
+              }
+            }}
             className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" 
           />
         </div>
@@ -117,6 +127,7 @@ const ImportPanel: React.FC<Props> = ({ onImport }) => {
                 <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Queue for Processing ({files.length})</h5>
                 <button onClick={() => setFiles([])} className="text-xs font-bold text-red-500 hover:underline">Clear all</button>
              </div>
+
              {files.map((file, idx) => (
                <div key={idx} className="flex items-center justify-between p-5 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all group">
                   <div className="flex items-center gap-4">
@@ -180,7 +191,13 @@ const ImportPanel: React.FC<Props> = ({ onImport }) => {
 };
 
 const Sparkles = ({ className, size }: { className?: string, size?: number }) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+    <path d="M5 3v4"/>
+    <path d="M19 17v4"/>
+    <path d="M3 5h4"/>
+    <path d="M17 19h4"/>
+  </svg>
 );
 
 export default ImportPanel;

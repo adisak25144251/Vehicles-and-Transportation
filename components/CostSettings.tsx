@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CostConfig, VehicleProfile, VehicleStatus } from '../types';
 import { 
   Settings, Fuel, Car, User, Leaf, Save, Plus, Trash2, 
-  CheckCircle2, Loader2, AlertCircle, TrendingDown, Info, X
+  CheckCircle2, Loader2, X
 } from 'lucide-react';
 
 interface Props {
@@ -35,11 +35,18 @@ const CostSettings: React.FC<Props> = ({ config, setConfig, vehicles, setVehicle
 
   const handleAddVehicleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     const vehicle: VehicleProfile = {
       id: 'v-' + Date.now(),
       ...newVehicle,
-      acquisitionDate: new Date().toISOString().split('T')[0]
+      acquisitionDate: new Date().toISOString().split('T')[0],
+
+      // ✅ Fix TS2739: เพิ่มค่าที่ VehicleProfile บังคับต้องมี
+      currentOdometer: 0,
+      totalFuelCost: 0,
+      totalMaintenanceCost: 0
     };
+
     setVehicles([...vehicles, vehicle]);
     setIsModalOpen(false);
     setNewVehicle({
@@ -49,7 +56,7 @@ const CostSettings: React.FC<Props> = ({ config, setConfig, vehicles, setVehicle
       fuelType: 'Gasoline 95',
       consumptionRate: 15.0,
       wearAndTearRate: 1.5,
-      status: 'USABLE'
+      status: 'USABLE' as VehicleStatus
     });
   };
 

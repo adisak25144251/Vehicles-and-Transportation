@@ -1,12 +1,13 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   X, Upload, FileText, MapPin, 
   CheckCircle2, Plus, Search, Loader2, 
   Navigation, MousePointer2, AlertCircle,
   Maximize2, Minimize2, Trash2 as ClearIcon,
-  Save, Zap, User, ArrowRight, Check
+  Save, Zap, User, ArrowRight, Check, Lock, Shield
 } from 'lucide-react';
-import { Trip, VehicleProfile, Location } from '../types';
+import { Trip, VehicleProfile, Location, PrivacyLevel } from '../types';
 import L from 'leaflet';
 
 interface Props {
@@ -34,6 +35,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
     allowance: 0,
     accommodation: 0,
     vehicleId: vehicles[0]?.id || '',
+    privacyLevel: 'STANDARD' as PrivacyLevel
   });
 
   const [locationStep, setLocationStep] = useState<'start' | 'end'>('start');
@@ -78,6 +80,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
         allowance: editTrip.allowance || 0,
         accommodation: editTrip.accommodation || 0,
         vehicleId: editTrip.vehicleId,
+        privacyLevel: editTrip.privacyLevel || 'STANDARD'
       });
       setStartLoc(editTrip.startLocation);
       setEndLoc(editTrip.endLocation);
@@ -93,6 +96,7 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
         allowance: 0,
         accommodation: 0,
         vehicleId: vehicles[0]?.id || '',
+        privacyLevel: 'STANDARD'
       });
       setStartLoc(null);
       setEndLoc(null);
@@ -300,7 +304,8 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
       accommodation: Number(formData.accommodation),
       otherCosts: editTrip ? editTrip.otherCosts : 0,
       efficiencyScore: 100,
-      status: editTrip ? editTrip.status : 'COMPLETED'
+      status: editTrip ? editTrip.status : 'COMPLETED',
+      privacyLevel: formData.privacyLevel
     };
 
     if (editTrip && onUpdateTrip) {
@@ -364,6 +369,22 @@ const NewTripModal: React.FC<Props> = ({ isOpen, onClose, onAddTrip, onUpdateTri
               </h5>
               
               <div className="space-y-4">
+                {/* PRIVACY LEVEL SELECTOR */}
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                   <label className="block text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 ml-1 flex items-center gap-1">
+                      <Lock size={10} /> Mission Privacy Level
+                   </label>
+                   <select 
+                      value={formData.privacyLevel}
+                      onChange={(e) => setFormData({...formData, privacyLevel: e.target.value as PrivacyLevel})}
+                      className="w-full p-2 bg-white border-none rounded-xl font-bold text-indigo-900 text-sm shadow-sm outline-none"
+                   >
+                      <option value="STANDARD">Standard (Visible)</option>
+                      <option value="SENSITIVE">Sensitive (Fuzzed Loc)</option>
+                      <option value="SECRET">Secret (Hidden)</option>
+                   </select>
+                </div>
+
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">ชื่อภารกิจหลัก</label>
                   <input 

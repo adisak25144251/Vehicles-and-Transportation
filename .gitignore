@@ -31,36 +31,7 @@ dist-ssr
 .env.development.local
 .env.production.local
 .env.test.local
-
 .firebase/
-@"
-# dependencies / build
-node_modules/
 dist/
-build/
-.next/
-out/
-
-# env
+node_modules/
 .env
-.env.*
-!.env.example
-
-# logs
-npm-debug.log*
-yarn-debug.log*
-pnpm-debug.log*
-*.log
-
-# firebase
-.firebase/
-firebase-debug.log*
-*.firebase.json
-
-# OS / editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-"@ | Add-Content .gitignore
-

@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { ShieldCheck, User as UserIcon, Lock, UserPlus, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, User as UserIcon, Lock, UserPlus, ArrowRight, CheckCircle2, AlertCircle, Loader2, Save } from 'lucide-react';
 import { User, UserRole } from '../types';
 
 interface Props {
@@ -12,6 +12,7 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Form States
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
@@ -22,6 +23,35 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
     confirmPassword: '',
     position: ''
   });
+
+  // --- PERSISTENCE LOGIC ---
+  useEffect(() => {
+    // 1. Restore Remembered Username
+    const savedUsername = localStorage.getItem('gov_remember_me');
+    if (savedUsername) {
+      setLoginForm(prev => ({ ...prev, username: savedUsername }));
+      setRememberMe(true);
+    }
+
+    // 2. Restore Registration Draft (if exists)
+    const savedDraft = localStorage.getItem('gov_reg_draft');
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft);
+        setRegForm(prev => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error('Failed to restore draft', e);
+      }
+    }
+  }, []);
+
+  // 3. Auto-save Registration Draft
+  useEffect(() => {
+    if (!isLoginView) {
+      const { password, confirmPassword, ...safeDraft } = regForm; // Don't save passwords in draft for security
+      localStorage.setItem('gov_reg_draft', JSON.stringify(safeDraft));
+    }
+  }, [regForm, isLoginView]);
 
   const getUsersFromDB = (): any[] => {
     try {
@@ -36,12 +66,19 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
     setIsLoading(true);
     setError(null);
 
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, 1000));
 
     const users = getUsersFromDB();
     const foundUser = users.find(u => u.username === loginForm.username && u.password === loginForm.password);
 
     if (foundUser) {
+      // Handle Remember Me
+      if (rememberMe) {
+        localStorage.setItem('gov_remember_me', loginForm.username);
+      } else {
+        localStorage.removeItem('gov_remember_me');
+      }
+
       const { password, ...userSafe } = foundUser;
       onLogin(userSafe as User);
     } else {
@@ -61,7 +98,7 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
       return;
     }
 
-    await new Promise(r => setTimeout(r, 1800));
+    await new Promise(r => setTimeout(r, 1500));
 
     const users = getUsersFromDB();
     if (users.some(u => u.username === regForm.username)) {
@@ -78,8 +115,15 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
       role: UserRole.OFFICER
     };
 
+    // Save to Vault (Persistent Storage)
     localStorage.setItem('gov_secure_vault', JSON.stringify([...users, newUser]));
     
+    // Clear Draft
+    localStorage.removeItem('gov_reg_draft');
+    
+    // Auto-fill Login
+    setLoginForm(prev => ({ ...prev, username: regForm.username }));
+
     setSuccess('ลงทะเบียนผู้ใช้งานสำเร็จ ระบบกำลังเตรียมการเข้าสู่ระบบ...');
     setTimeout(() => {
       setSuccess(null);
@@ -170,6 +214,7 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
                       onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
                       className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-transparent rounded-[1.5rem] focus:border-[#002D62]/20 focus:bg-white outline-none font-black text-slate-800 transition-all shadow-inner text-base"
                       placeholder="Username"
+                      autoComplete="username"
                     />
                   </div>
                 </div>
@@ -184,8 +229,22 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
                       onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
                       className="w-full pl-14 pr-6 py-5 bg-slate-50 border-2 border-transparent rounded-[1.5rem] focus:border-[#002D62]/20 focus:bg-white outline-none font-black text-slate-800 transition-all shadow-inner text-base"
                       placeholder="••••••••"
+                      autoComplete="current-password"
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                   <label className="flex items-center gap-2 cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-[#002D62] focus:ring-[#002D62]" 
+                      />
+                      <span className="text-xs font-bold text-slate-500 group-hover:text-[#002D62] transition-colors">จดจำชื่อผู้ใช้งาน</span>
+                   </label>
+                   <a href="#" className="text-xs font-bold text-amber-500 hover:text-amber-600 transition-colors">ลืมรหัสผ่าน?</a>
                 </div>
 
                 <button 
@@ -207,6 +266,7 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
                     onChange={(e) => setRegForm({...regForm, fullName: e.target.value})}
                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-[1.5rem] focus:ring-2 focus:ring-[#002D62] outline-none font-bold text-slate-800 shadow-inner text-sm"
                     placeholder="Full Name"
+                    autoComplete="name"
                   />
                 </div>
 
@@ -219,6 +279,7 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
                       onChange={(e) => setRegForm({...regForm, username: e.target.value})}
                       className="w-full px-6 py-4 bg-slate-50 border-none rounded-[1.5rem] focus:ring-2 focus:ring-[#002D62] outline-none font-bold text-slate-800 shadow-inner text-sm"
                       placeholder="Username"
+                      autoComplete="username"
                     />
                   </div>
                   <div className="space-y-1">
@@ -229,6 +290,7 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
                       onChange={(e) => setRegForm({...regForm, position: e.target.value})}
                       className="w-full px-6 py-4 bg-slate-50 border-none rounded-[1.5rem] focus:ring-2 focus:ring-[#002D62] outline-none font-bold text-slate-800 shadow-inner text-sm"
                       placeholder="Position"
+                      autoComplete="organization-title"
                     />
                   </div>
                 </div>
@@ -242,6 +304,7 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
                       onChange={(e) => setRegForm({...regForm, password: e.target.value})}
                       className="w-full px-6 py-4 bg-slate-50 border-none rounded-[1.5rem] focus:ring-2 focus:ring-[#002D62] outline-none font-bold text-slate-800 shadow-inner text-sm"
                       placeholder="Password"
+                      autoComplete="new-password"
                     />
                   </div>
                   <div className="space-y-1">
@@ -252,8 +315,14 @@ const AuthPage: React.FC<Props> = ({ onLogin }) => {
                       onChange={(e) => setRegForm({...regForm, confirmPassword: e.target.value})}
                       className="w-full px-6 py-4 bg-slate-50 border-none rounded-[1.5rem] focus:ring-2 focus:ring-[#002D62] outline-none font-bold text-slate-800 shadow-inner text-sm"
                       placeholder="Confirm"
+                      autoComplete="new-password"
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-[10px] text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-100">
+                   <Save size={12} />
+                   <span>ข้อมูลจะถูกบันทึกชั่วคราว (Draft) แม้ปิด Browser</span>
                 </div>
 
                 <button 

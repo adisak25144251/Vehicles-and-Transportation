@@ -1,29 +1,58 @@
 
-import React, { useState } from 'react';
-import { Trip } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Trip, VehicleProfile, RequestStatus } from '../types';
+import { requestService } from '../services/apiService';
+import { scoringService } from '../services/scoringService';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area,
   Cell, PieChart, Pie
 } from 'recharts';
 import { 
   Fuel, Route, Timer, CheckCircle2, BrainCircuit, TrendingUp, 
-  Share2, Download, Link as LinkIcon, Mail, FileText, X, Loader2, ShieldCheck
+  Share2, Download, Link as LinkIcon, Mail, FileText, X, Loader2, ShieldCheck,
+  FileCheck, Truck, Activity, CalendarDays
 } from 'lucide-react';
 
 interface Props {
   trips: Trip[];
+  vehicles: VehicleProfile[];
   onNavigateToAI: () => void;
 }
 
-const Dashboard: React.FC<Props> = ({ trips, onNavigateToAI }) => {
+const Dashboard: React.FC<Props> = ({ trips, vehicles, onNavigateToAI }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [shareStep, setShareStep] = useState<'options' | 'success'>('options');
   const [chartView, setChartView] = useState<'dist' | 'trips'>('dist');
+  
+  // Dashboard Metrics
+  const [approvalStats, setApprovalStats] = useState({ pending: 0, active: 0 });
+  const [avgDriverScore, setAvgDriverScore] = useState(0);
+
+  useEffect(() => {
+    // Fetch Requests Stats
+    requestService.getAll().then(reqs => {
+       const pending = reqs.filter(r => r.status === RequestStatus.SUBMITTED).length;
+       const active = reqs.filter(r => r.status === RequestStatus.APPROVED || r.status === RequestStatus.ISSUED || r.status === RequestStatus.STARTED).length;
+       setApprovalStats({ pending, active });
+    });
+
+    // Fetch Driver Score Average
+    const profiles = scoringService.getAllDriverScores();
+    if (profiles.length > 0) {
+       const avg = profiles.reduce((sum, p) => sum + p.score, 0) / profiles.length;
+       setAvgDriverScore(avg);
+    }
+  }, []);
 
   const totalKm = trips.reduce((acc, t) => acc + t.distanceKm, 0);
   const totalFuel = trips.reduce((acc, t) => acc + t.fuelCost, 0);
   const avgEfficiency = trips.length > 0 ? trips.reduce((acc, t) => acc + (t.efficiencyScore || 0), 0) / trips.length : 0;
+
+  // Fleet Stats
+  const usableVehicles = vehicles.filter(v => v.status === 'USABLE').length;
+  const maintenanceVehicles = vehicles.filter(v => v.status !== 'USABLE').length;
+  const fleetUtilization = vehicles.length > 0 ? Math.round((usableVehicles / vehicles.length) * 100) : 0;
 
   const summaryData = [
     { label: 'ระยะทางรวม', value: `${totalKm.toLocaleString()} กม.`, icon: Route, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%' },
@@ -176,6 +205,88 @@ const Dashboard: React.FC<Props> = ({ trips, onNavigateToAI }) => {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* --- NEW SECTION: OPERATIONAL SUMMARY (4-GRID) --- */}
+      <div>
+         <h4 className="text-xl font-black text-[#002D62] mb-6 tracking-tight flex items-center gap-2">
+            <ShieldCheck className="text-amber-500"/> Operational Overview
+         </h4>
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* 1. Approval Summary */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><FileCheck size={24}/></div>
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Pending</span>
+               </div>
+               <h5 className="font-bold text-slate-700">สรุปการอนุมัติ</h5>
+               <div className="mt-4 flex gap-4">
+                  <div className="flex-1 p-3 bg-slate-50 rounded-xl text-center">
+                     <p className="text-2xl font-black text-amber-500">{approvalStats.pending}</p>
+                     <p className="text-[9px] text-slate-400 font-bold">รออนุมัติ</p>
+                  </div>
+                  <div className="flex-1 p-3 bg-slate-50 rounded-xl text-center">
+                     <p className="text-2xl font-black text-emerald-500">{approvalStats.active}</p>
+                     <p className="text-[9px] text-slate-400 font-bold">ดำเนินการ</p>
+                  </div>
+               </div>
+            </div>
+
+            {/* 2. Recent Trips Summary */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-purple-50 text-purple-600 rounded-xl"><CalendarDays size={24}/></div>
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Recent</span>
+               </div>
+               <h5 className="font-bold text-slate-700 mb-3">รายการเดินทาง</h5>
+               <div className="space-y-2 flex-1">
+                  {trips.slice(0, 3).map(trip => (
+                     <div key={trip.id} className="flex justify-between items-center text-xs">
+                        <span className="truncate max-w-[100px] text-slate-600 font-medium">{trip.missionName}</span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black ${trip.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{trip.status}</span>
+                     </div>
+                  ))}
+               </div>
+            </div>
+
+            {/* 3. Fleet Management Summary */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-amber-50 text-amber-600 rounded-xl"><Truck size={24}/></div>
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Status</span>
+               </div>
+               <h5 className="font-bold text-slate-700">จัดการยานพาหนะ</h5>
+               <div className="mt-3">
+                  <div className="flex justify-between text-xs font-bold text-slate-600 mb-1">
+                     <span>Usable ({usableVehicles})</span>
+                     <span>{fleetUtilization}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex">
+                     <div className="bg-emerald-500 h-full" style={{width: `${fleetUtilization}%`}} />
+                     <div className="bg-amber-500 h-full" style={{width: `${100-fleetUtilization}%`}} />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-2 text-right">Maint: {maintenanceVehicles} Units</p>
+               </div>
+            </div>
+
+            {/* 4. Driver Behavior Summary */}
+            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between">
+               <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-red-50 text-red-600 rounded-xl"><Activity size={24}/></div>
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Score</span>
+               </div>
+               <h5 className="font-bold text-slate-700">คะแนนพฤติกรรม</h5>
+               <div className="mt-2 flex items-end gap-3">
+                  <span className="text-4xl font-black text-[#002D62]">{Math.round(avgDriverScore)}</span>
+                  <div className="mb-2 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded">
+                     GRADE {avgDriverScore >= 80 ? 'A' : avgDriverScore >= 70 ? 'B' : 'C'}
+                  </div>
+               </div>
+               <p className="text-[10px] text-slate-400 mt-1">Fleet Average Score</p>
+            </div>
+
+         </div>
       </div>
 
       {/* AI CTA Section */}
